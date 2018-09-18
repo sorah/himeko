@@ -1,0 +1,44 @@
+<h2>Keys</h2>
+
+<p>List of IAM access key for <code><%= current_username %></code>:</p>
+
+<section class='iam-keys'>
+  <%- @keys.each do |key, last_used| -%>
+    <div class='iam-key'>
+      <div class='iam-key-info'>
+        <h3><%= key.access_key_id %></h3>
+        Status: <%= key.status %><br>
+        Since: <%= key.create_date %><br>
+        Last Used: <%= last_used.service_name %> @ <%= last_used.region %> / <%= last_used.last_used_date %>
+      </div>
+
+      <div class='iam-key-actions'>
+        <form action='/keys/<%= key.access_key_id %>' method='POST' onsubmit="return confirm('Are you sure? This cannot be undone.')">
+          <input type='hidden' name='_method' value='DELETE'>
+          <button type='submit' class='btn-danger'>Delete</button>
+        </form>
+
+        <%- if key.status == 'Active' -%>
+          <form action='/keys/<%= key.access_key_id %>/active' method='POST' onsubmit="return confirm('Are you sure?')">
+            <input type='hidden' name='_method' value='DELETE'>
+            <button type='submit' class='btn'>Disable</button>
+          </form>
+        <%- else -%>
+          <form action='/keys/<%= key.access_key_id %>/active' method='POST'>
+            <button type='submit' class='btn'>Activate</button>
+          </form>
+        <%- end -%>
+      </div>
+    </div>
+  <%- end -%>
+</section>
+
+<%- if @keys.size < 2 -%>
+  <form action='/keys' method='POST'>
+    <button type='submit' class='btn-primary'>Create</button>
+  </form>
+<%- else -%>
+  <p>IAM user cannot have more than 2 access keys at once. Delete an existing key to create new one; <a href='https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-limits.html#reference_iam-limits-entities'>AWS docs</a><p>
+<%- end -%>
+
+

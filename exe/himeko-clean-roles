@@ -1,0 +1,18 @@
+#!/usr/bin/env ruby
+require 'himeko'
+require 'logger'
+require 'aws-sdk-dynamodb'
+require 'aws-sdk-iam'
+
+config = {
+  role_path: ENV.fetch('HIMEKO_ROLE_PATH', '/user-role/'),
+  role_prefix: ENV.fetch('HIMEKO_ROLE_PREFIX', 'user_'),
+  dynamodb_table_name: ENV.fetch('HIMEKO_DYNAMODB_TABLE', 'himeko-staging'),
+}
+
+Himeko::RoleManager.new(
+  iam: Aws::IAM::Client.new(logger: Logger.new($stdout)),
+  path: config[:role_path],
+  prefix: config[:role_prefix],
+  dynamodb_table: Aws::DynamoDB::Resource.new(logger: Logger.new($stdout)).table(config[:dynamodb_table_name]),
+).prune

@@ -1,0 +1,52 @@
+
+<div class='access-console-form'>
+  <form action='/console' method='POST'>
+    <div class='access-console-form-auto access-console-form-auto-enabled'>
+      <p>Taking you to console in <span class='access-console-form-auto-sec'>4</span> seconds... <a class='access-console-form-auto-cancel' href='#'>Stop</a></p>
+    </div>
+    <p><button type='submit' class='btn-primary'>Access to Console</button></p>
+    <p><input type='checkbox' name='recreate' value='1' id='recreate'><label for='recreate'>Reinitiailze</label></p>
+    <p><small>Choose "Reinitiailze" when you have a change in your IAM permissions</small></p>
+  </form>
+  <div class='access-console-form-loading'>
+    <p>Logging into console... (This could take up to 10-20 seconds)</p>
+  </div>
+</div>
+
+<%== conf.dig(:custom_html, :index) %>
+
+<script>
+  "use strict";
+  document.addEventListener("DOMContentLoaded", () => {
+    document.body.addEventListener('click', () => {
+      document.body.querySelectorAll('.access-console-form-auto-enabled').forEach((elem) => {
+        elem.classList.remove('access-console-form-auto-enabled');
+      });
+    });
+    document.querySelectorAll('.access-console-form').forEach((elem) => {
+      elem.querySelector('form').addEventListener('submit', (e) => {
+        elem.classList.add('access-console-form-submitted');
+      });
+      elem.querySelector('.access-console-form-auto-cancel').addEventListener('click', (e) => {
+        elem.querySelector('.access-console-form-auto').classList.remove('access-console-form-auto-enabled');
+        e.preventDefault();
+      });
+
+      const countDown = function() {
+        const secElem = elem.querySelector('.access-console-form-auto-sec');
+        var sec = parseInt(secElem.innerHTML, 10);
+        sec -= 1;
+        secElem.innerHTML = `${sec}`;
+        if (sec < 1) {
+          if (elem.querySelector('.access-console-form-auto-enabled')) {
+            elem.querySelector('form').submit();
+            elem.classList.add('access-console-form-submitted');
+          }
+        } else {
+          setTimeout(countDown, 1000);
+        }
+      };
+      setTimeout(countDown, 1000);
+    });
+  });
+</script>

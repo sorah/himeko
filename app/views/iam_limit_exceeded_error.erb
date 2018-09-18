@@ -1,0 +1,7 @@
+<h2>400: IAM limit exceeded</h2>
+
+<p>Sadly, we have reached some IAM limit during operation...<p>
+
+<p><code><%= @iam_error&.inspect %></code></p>
+
+<%== conf.dig(:custom_html, :iam_limit_exceeded_error) %>

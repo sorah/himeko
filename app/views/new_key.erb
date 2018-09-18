@@ -1,0 +1,35 @@
+<h2>New IAM Access Key Created</h2>
+
+<p>New IAM access key has been created for <code><%= @key.user_name %></code>. Note that you won't be able to see the secret key again!</p>
+
+<%== conf.dig(:custom_html, :new_key_guidance) %>
+
+<section class='iam-secret-key'>
+  <div>
+    <h4>AWS_ACCESS_KEY_ID</code></h4>
+    <pre class='iam-copyable'><code><%= @key.access_key_id %></code></pre>
+  </div>
+  <div>
+    <h4>AWS_SECRET_ACCESS_KEY</code></h4>
+    <pre class='iam-copyable'><code><%= @key.secret_access_key %></code></pre>
+  </div>
+</section>
+
+<script>
+  "use strict";
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.iam-copyable > code').forEach((e) => {
+      e.addEventListener('mouseenter', (e) => {
+        const range = document.createRange();
+        range.selectNodeContents(e.target);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      });
+      e.addEventListener('mouseleave', (e) => {
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+      });
+    });
+  });
+</script>

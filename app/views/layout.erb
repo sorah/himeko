@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, minimum-scale=1'>
+    <title>AWS self-service portal | Himeko</title>
+    <link rel='stylesheet' href='/style.css' type="text/css">
+  </head>
+
+  <body>
+    <div class="container">
+      <header class='header'>
+        <h1 class='logo'>
+          <a href='/'>AWS self-service</a>
+        </h1>
+
+        <nav>
+          <a href='/'>Console</a>
+          <a href='/keys'>Access Keys</a>
+        </nav>
+      </header>
+
+      <% notice ||= session.delete(:notice); error ||= session.delete(:error) %>
+      <% if notice %>
+        <div class="notice"><%= notice %></div>
+      <% end %>
+
+      <% if error %>
+        <div class="error"><%= error %></div>
+      <% end %>
+
+      <div class="box">
+        <%== yield %>
+      </div>
+
+      <footer>
+        <p>Logged in as <%== current_username %></p>
+        <div class="credit">
+          Powered by <a href="https://github.com/sorah/himeko">sorah/himeko</a>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
+
