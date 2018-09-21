@@ -116,8 +116,8 @@ module Himeko
           role_session_name: current_username,
         )
       rescue Aws::STS::Errors::AccessDenied
-        raise if retries > 3
-        sleep 4 + (1.1**retries)
+        raise if retries > 5
+        sleep 1 + (1.1**retries)
         retries += 1
         retry
       end
