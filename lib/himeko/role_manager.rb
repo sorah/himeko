@@ -43,8 +43,8 @@ module Himeko
       item.fetch('role_arn')
     end
 
-    def remove(username, delete_record: true)
-      role_name = role_name_for_username(username)
+    def remove(username, role_name: nil, delete_record: true)
+      role_name ||= role_name_for_username(username)
 
       iam.list_attached_role_policies(role_name: role_name).each.flat_map(&:attached_policies).map(&:policy_arn).each do |policy_arn|
         iam.detach_role_policy(role_name: role_name, policy_arn: policy_arn)
@@ -92,8 +92,8 @@ module Himeko
         },
       ).each do |page|
         page.items.each do |item|
-          puts "==> #{item['username']}"
-          remove(item['username'])
+          puts "==> #{item['username']} (#{item['role_arn']})"
+          remove(item['username'], role_name: item['role_arn'].split(?/)[-1])
           table.delete_item(key: {'username' => item['username']})
         end
       end
