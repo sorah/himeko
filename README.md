@@ -2,12 +2,17 @@
 
 This web application provides self service of AWS IAM access keys (which belongs to an IAM user) and management console federated logging in via an auto generated IAM role which mimicked the IAM user.
 
+1. Prepare proper authentication method for this web application (Pass IAM username for the authenticated user as a Rack environment)
+2. This webapp creates an IAM role from the authenticated IAM user (when it hasn't existed yet)
+3. This webapp redirects the user to AWS management console via Federated Login https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_enable-console-custom-url.html
+
 ## Prerequisites
 
 - DynamoDB table for managing temporary IAM roles
   - primary key: `username` (string)
-- (optional, recommended) AWS IAM user for calling `sts:AssumeRole`
+- (optional, recommended) AWS IAM _user_ for calling `sts:AssumeRole`
   - AWS restricts having more than an hour for session `DurationSeconds` when assuming a new role using an identity derived from IAM roles (["Role Chaining"](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_terms-and-concepts.html))
+  - At [Cookpad](https://info.cookpad.com/), we use [Vault AWS Secrets Engine](https://www.vaultproject.io/docs/secrets/aws/index.html) to rotate IAM user access key for `sts:AssumeRole` API calls.
 
 ## Set up
 
@@ -55,41 +60,100 @@ But since the configuration above is required, you'll need to add your `config.r
 
 #### Access Key Management
 
-- `iam:ListAccessKeys`
-- `iam:GetAccessKeyLastUsed`
-- `iam:UpdateAccessKey`
-- `iam:DeleteAccessKey`
+``` json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": [
+                "iam:CreateAccessKey",
+                "iam:DeleteAccessKey",
+                "iam:GetAccessKeyLastUsed",
+                "iam:ListAccessKeys",
+                "iam:UpdateAccessKey"
+            ],
+            "Effect": "Allow",
+            "Resource": [
+                "arn:aws:iam::*:user/*"
+            ]
+        }
+    ]
+}
+```
 
 #### Role creation and management for user console access
 
-- DynamoDB
-  - `dynamodb:Scan`
-  - `dynamodb:DeleteItem`
-  - `dynamodb:DescribeTable`
-  - `dynamodb:GetItem`
-  - `dynamodb:PutItem`
-  - `dynamodb:Query`
-  - `dynamodb:UpdateItem`
-- IAM
-  - `iam:AttachRolePolicy`
-  - `iam:CreateRole`
-  - `iam:DeleteRole`
-  - `iam:DetachRolePolicy`
-  - `iam:GetGroupPolicy`
-  - `iam:GetUserPolicy`
-  - `iam:GetUser`
-  - `iam:ListAttachedGroupPolicies`
-  - `iam:ListAttachedRolePolicies`
-  - `iam:ListAttachedUserPolicies`
-  - `iam:ListGroupPolicies`
-  - `iam:ListGroupsForUser`
-  - `iam:ListRolePolicies`
-  - `iam:ListUserPolicies`
-  - `iam:PutRolePolicy`
+``` json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+       {
+            "Action": [
+                "dynamodb:DescribeTable",
+                "dynamodb:Query",
+                "dynamodb:Scan",
+                "dynamodb:GetItem",
+                "dynamodb:BatchGetItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem"
+            ],
+            "Effect": "Allow",
+            "Resource": [
+                "arn:aws:dynamodb:REGION:ACCOUNT:table/TABLE",
+                "arn:aws:dynamodb:REGION:ACCOUNT:table/TABLE/index/*"
+            ]
+        },
+        {
+            "Action": [
+                "iam:CreateRole",
+                "iam:DeleteRole",
+                "iam:AttachRolePolicy",
+                "iam:DetachRolePolicy",
+                "iam:DeleteRolePolicy",
+                "iam:GetGroupPolicy",
+                "iam:GetUserPolicy",
+                "iam:GetUser",
+                "iam:ListAttachedGroupPolicies",
+                "iam:ListAttachedRolePolicies",
+                "iam:ListAttachedUserPolicies",
+                "iam:ListGroupPolicies",
+                "iam:ListGroupsForUser",
+                "iam:ListRolePolicies",
+                "iam:ListUserPolicies",
+                "iam:PutRolePolicy"
+            ],
+            "Effect": "Allow",
+            "Resource": [
+                "arn:aws:iam::ACCOUNT:user/*",
+                "arn:aws:iam::ACCOUNT:group/*",
+                "arn:aws:iam::ACCOUNT:role/user-role/*"
+            ]
+        }
+    ]
+}
+```
 
-## Console Login
+(`/user-role/` is a default path for IAM roles which this webapp creates)
 
-- `sts:AssumeRole`
+#### Console Login
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "sts:AssumeRole"
+            ],
+            "Resource": [
+                "arn:aws:iam::ACCOUNT:role/user-role/*"
+            ]
+        }
+    ]
+}
+```
 
 ## Development
 
