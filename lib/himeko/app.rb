@@ -94,7 +94,13 @@ module Himeko
     end
 
     get '/' do
+      unless session[:iam_user_existence]
+        iam.get_user(user_name: current_username)
+        session[:iam_user_existence] = true
+      end
       erb :index
+    rescue Aws::IAM::Errors::NoSuchEntity
+      return render_no_user_error()
     end
 
     post '/console' do
