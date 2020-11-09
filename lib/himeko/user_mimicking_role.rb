@@ -4,22 +4,30 @@ require 'aws-sdk-iam'
 
 module Himeko
   class UserMimickingRole
-    def initialize(iam, username, role_name, path = nil, driver: nil)
+    def initialize(iam, username, role_name, path = nil, driver: nil, role_existing: false)
       @driver = driver || Driver.new(iam)
       @username = username
       @role_name = role_name
       @path = path
+      @role_existing = role_existing
     end
 
     attr_reader :driver, :username, :role_name, :path
+    attr_reader :role_existing
 
     # @return [String] role arn
     def create
-      arn = driver.create_role(
-        path: path,
-        role_name: role_name,
-        assume_role_policy_document: assume_role_policy_document,
-      )
+      if role_existing
+        arn = driver.get_role(
+          role_name: role_name,
+        )
+      else
+        arn = driver.create_role(
+          path: path,
+          role_name: role_name,
+          assume_role_policy_document: assume_role_policy_document,
+        )
+      end
 
       managed_policies.each do |policy_arn|
         driver.attach_role_policy(role_name, policy_arn)
@@ -130,6 +138,10 @@ module Himeko
           assume_role_policy_document: assume_role_policy_document.to_json,
           max_session_duration: max_session_duration
         ).role.arn
+      end
+
+      def get_role(role_name:)
+        iam.get_role(role_name: role_name).role.arn
       end
 
       def attach_role_policy(role_name, policy_arn)

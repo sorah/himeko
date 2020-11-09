@@ -22,10 +22,12 @@ module Himeko
       ).items.first
 
       if recreate || item.nil?
+        role_existing = false
         begin
-          return create(username)
+          return create(username, role_existing: role_existing)
         rescue Aws::IAM::Errors::EntityAlreadyExists
-          remove(username, delete_record: false)
+          remove(username, delete_record: false, delete_role: false)
+          role_existing = true
           retry
         end
       end
@@ -43,7 +45,7 @@ module Himeko
       item.fetch('role_arn')
     end
 
-    def remove(username, role_name: nil, delete_record: true)
+    def remove(username, role_name: nil, delete_record: true, delete_role: true)
       role_name ||= role_name_for_username(username)
 
       iam.list_attached_role_policies(role_name: role_name).each.flat_map(&:attached_policies).map(&:policy_arn).each do |policy_arn|
@@ -52,7 +54,7 @@ module Himeko
       iam.list_role_policies(role_name: role_name).policy_names.each do |policy_name|
         iam.delete_role_policy(role_name: role_name, policy_name: policy_name)
       end
-      iam.delete_role(role_name: role_name)
+      iam.delete_role(role_name: role_name) if delete_role
 
       if delete_record
         table.delete_item(
@@ -65,8 +67,8 @@ module Himeko
       # do nothing
     end
 
-    def create(username)
-      role_arn = UserMimickingRole.new(iam, username, role_name_for_username(username), path).create
+    def create(username, role_existing: false)
+      role_arn = UserMimickingRole.new(iam, username, role_name_for_username(username), path, role_existing: role_existing).create
 
       table.update_item(
         key: {
