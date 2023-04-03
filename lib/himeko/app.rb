@@ -128,7 +128,7 @@ module Himeko
         retry
       end
       json = {sessionId: resp.credentials.access_key_id, sessionKey: resp.credentials.secret_access_key, sessionToken: resp.credentials.session_token}.to_json
-      signin_token = JSON.parse(open("https://signin.aws.amazon.com/federation?Action=getSigninToken&Session=#{URI.encode_www_form_component(json)}", 'r', &:read))
+      signin_token = JSON.parse(URI.open("https://signin.aws.amazon.com/federation?Action=getSigninToken&Session=#{URI.encode_www_form_component(json)}", 'r', &:read))
 
       url = "https://signin.aws.amazon.com/federation?Action=login&Issuer=#{URI.encode_www_form_component(request.base_url)}&Destination=#{URI.encode_www_form_component(params[:relay] || 'https://console.aws.amazon.com/console/home')}&SigninToken=#{signin_token.fetch("SigninToken")}"
 
