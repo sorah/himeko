@@ -33,7 +33,7 @@ GEM
       multipart-post (>= 1.2, < 3)
       ruby2_keywords
     hashie (4.1.0)
-    jmespath (1.4.0)
+    jmespath (1.6.1)
     jwt (2.2.2)
     multi_json (1.15.0)
     multi_xml (0.6.0)
