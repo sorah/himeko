@@ -4,12 +4,13 @@ require 'aws-sdk-iam'
 
 module Himeko
   class UserMimickingRole
-    def initialize(iam, username, role_name, path = nil, driver: nil, role_existing: false)
+    def initialize(iam, username, role_name, path = nil, driver: nil, role_existing: false, assume_role_policy_document: nil)
       @driver = driver || Driver.new(iam)
       @username = username
       @role_name = role_name
       @path = path
       @role_existing = role_existing
+      @assume_role_policy_document = assume_role_policy_document
     end
 
     attr_reader :driver, :username, :role_name, :path
@@ -49,7 +50,7 @@ module Himeko
     end
 
     def assume_role_policy_document
-      {
+      @assume_role_policy_document || {
         "Version"=>"2012-10-17",
         "Statement"=>[
           {

@@ -28,7 +28,10 @@ gem 'himeko'
 
 Make sure to set the following rack environment variable to a request before passing it to the application.
 
-- `himeko.user`: IAM user name authenticated for the request
+- `himeko.user`: IAM user name authenticated for the request (required)
+- `himeko.session_tags`: session tags to pass into sts:AssumeRole call (Hash of tag key and value, optional)
+- `himeko.session_transitive_tag_keys`: session tag key names to set as a transitive tag (Array of tag key names, optional)
+- `himeko.assume_role_policy_document`: Assume role policy document in Hash for a temporary IAM role for a given user. (Hash, optional. Default to allow `aws:iam:::{ACCOUNT}:root` to sts:AssumeRole.)
 
 It is your responsibility to provide proper user data to this application. 
 

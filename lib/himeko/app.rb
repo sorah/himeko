@@ -20,6 +20,10 @@ module Himeko
     CONTEXT_RACK_ENV_NAME = 'himeko.ctx'
     USER_RACK_ENV_NAME = 'himeko.user'
 
+    TAGS_RACK_ENV_NAME = 'himeko.session_tags'
+    TRANSITIVE_TAG_KEYS_RACK_ENV_NAME = 'himeko.session_transitive_tag_keys'
+    ASSUME_ROLE_POLICY_DOCUMENT_RACK_ENV_NAME = 'himeko.assume_role_policy_document'
+
     def self.initialize_context(config)
       {
         config: config,
@@ -106,7 +110,11 @@ module Himeko
     post '/console' do
       recreate = params[:recreate] == '1'
       begin
-        arn = role_manager.fetch(current_username, recreate: recreate)
+        arn = role_manager.fetch(
+          current_username,
+          recreate: recreate,
+          assume_role_policy_document: request.env[ASSUME_ROLE_POLICY_DOCUMENT_RACK_ENV_NAME],
+        )
       rescue Aws::IAM::Errors::LimitExceeded => e
         @iam_error = e
         status 400
@@ -120,6 +128,8 @@ module Himeko
           duration_seconds: console_session_duration,
           role_arn: arn,
           role_session_name: current_username,
+          tags: request.env.fetch(TAGS_RACK_ENV_NAME, {}).map { |k,v| {key: k, value: v} },
+          transitive_tag_keys: request.env[TRANSITIVE_TAG_KEYS_RACK_ENV_NAME] || [],
         )
       rescue Aws::STS::Errors::AccessDenied
         raise if retries > 5

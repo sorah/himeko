@@ -13,7 +13,7 @@ module Himeko
 
     attr_reader :iam, :prefix, :path, :table, :ttl
 
-    def fetch(username, recreate: false)
+    def fetch(username, recreate: false, assume_role_policy_document: nil)
       item = table.query(
         limit: 1,
         select: 'ALL_ATTRIBUTES',
@@ -24,7 +24,7 @@ module Himeko
       if recreate || item.nil?
         role_existing = false
         begin
-          return create(username, role_existing: role_existing)
+          return create(username, role_existing: role_existing, assume_role_policy_document: assume_role_policy_document)
         rescue Aws::IAM::Errors::EntityAlreadyExists
           remove(username, delete_record: false, delete_role: false)
           role_existing = true
@@ -67,8 +67,15 @@ module Himeko
       # do nothing
     end
 
-    def create(username, role_existing: false)
-      role_arn = UserMimickingRole.new(iam, username, role_name_for_username(username), path, role_existing: role_existing).create
+    def create(username, role_existing: false, assume_role_policy_document: nil)
+      role_arn = UserMimickingRole.new(
+        iam,
+        username,
+        role_name_for_username(username),
+        path,
+        role_existing: role_existing,
+        assume_role_policy_document: assume_role_policy_document,
+      ).create
 
       table.update_item(
         key: {
