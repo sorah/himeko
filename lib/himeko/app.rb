@@ -47,8 +47,9 @@ module Himeko
     set :root, File.expand_path(File.join(__dir__, '..', '..', 'app'))
     set :erb, escape_html: true
 
+    set :protection, true
     use Rack::MethodOverride
-    use Rack::Protection
+
 
     helpers do
       def context
@@ -88,12 +89,49 @@ module Himeko
       end
 
       def console_session_duration
-        conf.fetch(:session_duration, 3600)
+        conf.fetch(:console_session_duration, nil) || conf.fetch(:session_duration, 3600)
+      end
+
+      def api_session_duration
+        conf.fetch(:api_session_duration, nil) || conf.fetch(:session_duration, 3600)
       end
 
       def render_no_user_error
         status 403
         erb :no_user_error
+      end
+
+      def obtain_credentials(recreate:, duration_seconds:)
+        begin
+          arn = role_manager.fetch(
+            current_username,
+            recreate: recreate,
+            assume_role_policy_document: request.env[ASSUME_ROLE_POLICY_DOCUMENT_RACK_ENV_NAME],
+          )
+        rescue Aws::IAM::Errors::LimitExceeded => e
+          @iam_error = e
+          status 400
+          return erb :iam_limit_exceeded_error
+        end
+
+        retries = 0
+        resp = nil
+        begin
+          resp = sts.assume_role(
+            duration_seconds: duration_seconds,
+            role_arn: arn,
+            role_session_name: current_username,
+            tags: request.env.fetch(TAGS_RACK_ENV_NAME, {}).map { |k,v| {key: k, value: v} },
+            transitive_tag_keys: request.env[TRANSITIVE_TAG_KEYS_RACK_ENV_NAME] || [],
+          )
+        rescue Aws::STS::Errors::AccessDenied
+          raise if retries > 5
+          sleep 1 + (1.1**retries)
+          retries += 1
+          retry
+        end
+
+        resp
       end
     end
 
@@ -109,40 +147,35 @@ module Himeko
 
     post '/console' do
       recreate = params[:recreate] == '1'
-      begin
-        arn = role_manager.fetch(
-          current_username,
-          recreate: recreate,
-          assume_role_policy_document: request.env[ASSUME_ROLE_POLICY_DOCUMENT_RACK_ENV_NAME],
-        )
-      rescue Aws::IAM::Errors::LimitExceeded => e
-        @iam_error = e
-        status 400
-        return erb :iam_limit_exceeded_error
-      end
-
-      retries = 0
-      resp = nil
-      begin
-        resp = sts.assume_role(
-          duration_seconds: console_session_duration,
-          role_arn: arn,
-          role_session_name: current_username,
-          tags: request.env.fetch(TAGS_RACK_ENV_NAME, {}).map { |k,v| {key: k, value: v} },
-          transitive_tag_keys: request.env[TRANSITIVE_TAG_KEYS_RACK_ENV_NAME] || [],
-        )
-      rescue Aws::STS::Errors::AccessDenied
-        raise if retries > 5
-        sleep 1 + (1.1**retries)
-        retries += 1
-        retry
-      end
+      resp = obtain_credentials(recreate: recreate, duration_seconds: console_session_duration)
       json = {sessionId: resp.credentials.access_key_id, sessionKey: resp.credentials.secret_access_key, sessionToken: resp.credentials.session_token}.to_json
       signin_token = JSON.parse(URI.open("https://signin.aws.amazon.com/federation?Action=getSigninToken&Session=#{URI.encode_www_form_component(json)}", 'r', &:read))
 
       url = "https://signin.aws.amazon.com/federation?Action=login&Issuer=#{URI.encode_www_form_component(request.base_url)}&Destination=#{URI.encode_www_form_component(params[:relay] || 'https://console.aws.amazon.com/console/home')}&SigninToken=#{signin_token.fetch("SigninToken")}"
 
       redirect url
+    end
+
+    # Mairu Assume Role Credentials API
+    post '/api/assume-role' do
+      unless request.env['HTTP_ACCEPT']&.match?(%r{application/json(?:,|$)})
+        halt 406, "request must be made under Accept=application/json"
+      end
+      resp = begin
+        obtain_credentials(recreate: false, duration_seconds: api_session_duration)
+      rescue Himeko::UserMimickingRole::UserNotFound
+        halt 404, "user not found"
+      end
+
+      headers 'cache-control' => 'private,no-cache,no-store,max-age=0'
+      content_type :json
+      JSON.generate(
+        Version: 1,
+        AccessKeyId: resp.credentials.access_key_id,
+        SecretAccessKey: resp.credentials.secret_access_key,
+        SessionToken: resp.credentials.session_token,
+        Expiration: resp.credentials.expiration.iso8601,
+      )
     end
 
     get '/keys' do
