@@ -4,6 +4,8 @@ require 'aws-sdk-iam'
 
 module Himeko
   class UserMimickingRole
+    class UserNotFound < StandardError; end
+
     def initialize(iam, username, role_name, path = nil, driver: nil, role_existing: false, assume_role_policy_document: nil)
       @driver = driver || Driver.new(iam)
       @username = username
@@ -43,6 +45,8 @@ module Himeko
 
     def user
       @user ||= driver.get_user(username)
+    rescue Aws::IAM::Errors::NoSuchEntity
+      raise UserNotFound
     end
 
     def account_id
