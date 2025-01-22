@@ -110,8 +110,8 @@ module Himeko
           )
         rescue Aws::IAM::Errors::LimitExceeded => e
           @iam_error = e
-          status 400
-          return erb :iam_limit_exceeded_error
+          content_type :html
+          halt 400, erb(:iam_limit_exceeded_error)
         end
 
         retries = 0
